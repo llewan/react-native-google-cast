@@ -17,6 +17,8 @@ import Chromecast from "react-native-google-cast";
 class Main extends Component {
   constructor(props) {
     super(props);
+    this.renderMessage = this.renderMessage.bind(this);
+    this.sendMessageToChromecast = this.sendMessageToChromecast.bind(this);
     this.chromecastCastMedia = this.chromecastCastMedia.bind(this);
     this.getChromecasts = this.getChromecasts.bind(this);
     this.disconnectChromecast = this.disconnectChromecast.bind(this);
@@ -24,11 +26,12 @@ class Main extends Component {
     this.state = {
       chromecastAround: false,
       connected: false,
-      chromecastList: []
+      chromecastList: [],
+      message: ''
     }
   }
 
-   componentDidMount() {
+  componentDidMount() {
     Chromecast.startScan();
     DeviceEventEmitter.addListener(Chromecast.DEVICE_AVAILABLE, (existance) => this.setState({chromecastAround: existance.device_available}));
     DeviceEventEmitter.addListener(Chromecast.MEDIA_LOADED, () => {});
@@ -46,17 +49,21 @@ class Main extends Component {
     this.setState({chromecastList: chromecastDevices});
   }
 
+  sendMessageToChromecast() {
+    if(!this.state.connected) return null;
+    Chromecast.sendMessage('hola hola');
+  }
+
   chromecastCastMedia() {
     this.setState({connected: true});
-    Chromecast.castMedia('http://download.blender.org/peach/bigbuckbunny_movies/BigBuckBunny_320x180.mp4', 'Video Test', 'http://camendesign.com/code/video_for_everybody/poster.jpg', 0);
   };
 
   async connectToChromecast(id) {
     const isConnected = await Chromecast.isConnected();
     isConnected
-      ? this.chromecastCastMedia()
-      : Chromecast.connectToDevice(id);
-  }
+        ? this.chromecastCastMedia()
+        : Chromecast.connectToDevice(id);
+    }
 
   renderChromecastList(chromecast) {
     return (
@@ -79,13 +86,22 @@ class Main extends Component {
     );
   }
 
-  renderControl(){
+  renderSendButton() {
     if(!this.state.connected) return null;
-    return(
-      <TouchableOpacity onPress={Chromecast.togglePauseCast} style={[styles.button, styles.backgroundColor]}>
-        <Text style={styles.textButton}>Play/Pause</Text>
+    return (
+      <TouchableOpacity onPress={this.sendMessageToChromecast} style={[styles.button, styles.backgroundColor]}>
+        <Text style={styles.textButton}>Send a Message</Text>
       </TouchableOpacity>
-    );
+    )
+  }
+
+  renderMessage() {
+    if(!this.state.connected) return null;
+    return (
+      <Text style={styles.textButton}>
+        envio el msg
+      </Text>
+    )
   }
 
   render() {
@@ -97,8 +113,9 @@ class Main extends Component {
           <Text>Show chromecasts</Text>
         </TouchableOpacity>
         {this.state.chromecastList.map((item, index) => this.renderChromecastList(item, index)) }
+        {this.renderSendButton()}
         {this.renderDisconnect()}
-        {this.renderControl()}
+        {this.renderMessage()}
       </View>
     );
   }
