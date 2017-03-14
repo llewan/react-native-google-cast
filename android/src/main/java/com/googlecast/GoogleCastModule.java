@@ -17,26 +17,38 @@ import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.common.annotations.VisibleForTesting;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 import com.facebook.react.uimanager.IllegalViewOperationException;
+
 import com.google.android.gms.cast.ApplicationMetadata;
 import com.google.android.gms.cast.CastDevice;
 import com.google.android.gms.cast.MediaInfo;
+
+import com.google.android.gms.cast.Cast;
+
 import com.google.android.libraries.cast.companionlibrary.cast.CastConfiguration;
 import com.google.android.libraries.cast.companionlibrary.cast.VideoCastManager;
+import com.google.android.libraries.cast.companionlibrary.cast.DataCastManager;
+
+import com.google.android.libraries.cast.companionlibrary.cast.callbacks.DataCastConsumer;
+import com.google.android.libraries.cast.companionlibrary.cast.callbacks.DataCastConsumerImpl;
+
 import com.google.android.libraries.cast.companionlibrary.cast.callbacks.VideoCastConsumer;
 import com.google.android.libraries.cast.companionlibrary.cast.callbacks.VideoCastConsumerImpl;
 import com.google.android.libraries.cast.companionlibrary.cast.exceptions.CastException;
 import com.google.android.libraries.cast.companionlibrary.cast.exceptions.NoConnectionException;
 import com.google.android.libraries.cast.companionlibrary.cast.exceptions.TransientNetworkDisconnectionException;
+import com.google.android.libraries.cast.companionlibrary.cast.exceptions.OnFailedListener;
+
 
 import java.util.HashMap;
 import java.util.Map;
+import java.io.IOException;
 
 /**
  * Created by Charlie on 5/29/16.
  */
 public class GoogleCastModule extends ReactContextBaseJavaModule implements LifecycleEventListener {
-    private VideoCastManager mCastManager;
-    private VideoCastConsumer mCastConsumer;
+    private DataCastManager mCastManager;
+    private DataCastConsumer mCastConsumer;
     Map<String, MediaRouter.RouteInfo> currentDevices = new HashMap<>();
     private WritableMap deviceAvailableParams;
 
@@ -52,6 +64,7 @@ public class GoogleCastModule extends ReactContextBaseJavaModule implements Life
     public GoogleCastModule(ReactApplicationContext reactContext) {
         super(reactContext);
         getReactApplicationContext().addLifecycleEventListener(this);
+        final CastConfiguration options = GoogleCastService.getCastConfig();
     }
 
     @Override
@@ -108,24 +121,11 @@ public class GoogleCastModule extends ReactContextBaseJavaModule implements Life
         }
     }
 
-    @ReactMethod
-    public void castMedia(String mediaUrl, String title, String imageUrl, @Nullable Integer seconds) {
-        if (seconds == null) {
-            seconds = 0;
-        }
-        Log.e(REACT_CLASS, "Casting media... ");
-        MediaInfo mediaInfo = GoogleCastService.getMediaInfo(mediaUrl, title, imageUrl);
-        try {
-            mCastManager.loadMedia(mediaInfo, true, seconds * 1000);
-        } catch (TransientNetworkDisconnectionException | NoConnectionException e) {
-            Log.e(REACT_CLASS, "falle ");
-            e.printStackTrace();
-        }
-    }
+
 
     @ReactMethod
     public void isConnected(Promise promise) {
-        boolean isConnected = VideoCastManager.getInstance().isConnected();
+        boolean isConnected = DataCastManager.getInstance().isConnected();
         Log.e(REACT_CLASS, "Am I connected ? " + isConnected);
         promise.resolve(isConnected);
     }
@@ -158,47 +158,32 @@ public class GoogleCastModule extends ReactContextBaseJavaModule implements Life
     }
 
     @ReactMethod
-    public void togglePauseCast() {
-        try {
-            if (mCastManager.isRemoteMediaPaused()) {
-                mCastManager.play();
-            } else {
-                mCastManager.pause();
-            }
-        } catch (CastException | TransientNetworkDisconnectionException | NoConnectionException e) {
-            e.printStackTrace();
+    public void sendMessage(@Nullable String message) {
+        Log.e(REACT_CLASS, "#sendMessage Chromecast start sendMessage to receiver!" + message);
+        if (mCastManager != null) {
+            final String msg = message;
+            mCastManager = DataCastManager.getInstance();
+            UiThreadUtil.runOnUiThread(new Runnable() {
+                public void run() {
+                    try {
+                        mCastManager.addNamespace("urn:x-cast:com.google.cast.sample.helloworld");
+                        mCastManager.sendDataMessage(msg, "urn:x-cast:com.google.cast.sample.helloworld");
+                        Log.e(REACT_CLASS, "#sendMessage Chromecast sendMessage to receiver!");
+                    } catch (TransientNetworkDisconnectionException | NoConnectionException e) {
+                        e.printStackTrace();
+                    } catch (IOException e){
+                        e.printStackTrace();
+                    }
+                }
+            });
         }
     }
-
-    @ReactMethod
-    public void seekCast(int seconds) {
-        try {
-            //mCastManager receives milliseconds
-            mCastManager.seek(seconds * 1000);
-        } catch (TransientNetworkDisconnectionException | NoConnectionException e) {
-            e.printStackTrace();
-        }
-    }
-
-    @ReactMethod
-    public void getStreamPosition(Promise promise) {
-        try {
-            //Returns the current (approximate) position of the current media, in milliseconds.
-            long time = mCastManager.getCurrentMediaPosition();
-            //Our react native approach handles everything in seconds
-            int seconds = (int) (time / 1000);
-            promise.resolve(seconds);
-        } catch (TransientNetworkDisconnectionException | NoConnectionException e) {
-            e.printStackTrace();
-        }
-    }
-
 
     @ReactMethod
     public void startScan() {
         Log.e(REACT_CLASS, "start scan Chromecast ");
         if (mCastManager != null) {
-            mCastManager = VideoCastManager.getInstance();
+            mCastManager = DataCastManager.getInstance();
             UiThreadUtil.runOnUiThread(new Runnable() {
                 public void run() {
                     mCastManager.incrementUiCounter();
@@ -211,22 +196,9 @@ public class GoogleCastModule extends ReactContextBaseJavaModule implements Life
             final CastConfiguration options = GoogleCastService.getCastConfig();
             UiThreadUtil.runOnUiThread(new Runnable() {
                 public void run() {
-                    VideoCastManager.initialize(getCurrentActivity(), options);
-                    mCastManager = VideoCastManager.getInstance();
-                    mCastConsumer = new VideoCastConsumerImpl() {
-
-                        @Override
-                        public void onMediaLoadResult(int statusCode) {
-                            super.onMediaLoadResult(statusCode);
-                            emitMessageToRN(getReactApplicationContext(), MEDIA_LOADED, null);
-                        }
-
-                        @Override
-                        public void onApplicationConnected(ApplicationMetadata appMetadata, String sessionId, boolean wasLaunched) {
-                            super.onApplicationConnected(appMetadata, sessionId, wasLaunched);
-                            Log.e(REACT_CLASS, "I am connected dudeeeeee ");
-                            emitMessageToRN(getReactApplicationContext(), DEVICE_CONNECTED, null);
-                        }
+                    DataCastManager.initialize(getCurrentActivity(), options);
+                    mCastManager = DataCastManager.getInstance();
+                    mCastConsumer = new DataCastConsumerImpl() {
 
                         @Override
                         public void onDisconnected() {
@@ -270,7 +242,7 @@ public class GoogleCastModule extends ReactContextBaseJavaModule implements Life
                         }
 
                     };
-                    mCastManager.addVideoCastConsumer(mCastConsumer);
+                    mCastManager.addDataCastConsumer(mCastConsumer);
                     mCastManager.incrementUiCounter();
                     mCastManager.startCastDiscovery();
                     Log.e(REACT_CLASS, "Chromecast Initialized for the first time!");

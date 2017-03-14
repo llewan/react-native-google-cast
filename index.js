@@ -15,6 +15,9 @@ export default {
   getDevices: function () {
 	return GoogleCast.getDevices();
   },
+  sendMessage: function (msg: string) {
+    GoogleCast.sendMessage(msg);
+  },
   connectToDevice: function (deviceId: string) {
 	GoogleCast.connectToDevice(deviceId);
   },
