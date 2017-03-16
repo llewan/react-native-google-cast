@@ -20,24 +20,16 @@ import com.facebook.react.uimanager.IllegalViewOperationException;
 
 import com.google.android.gms.cast.ApplicationMetadata;
 import com.google.android.gms.cast.CastDevice;
-import com.google.android.gms.cast.MediaInfo;
-
 import com.google.android.gms.cast.Cast;
 
 import com.google.android.libraries.cast.companionlibrary.cast.CastConfiguration;
-import com.google.android.libraries.cast.companionlibrary.cast.VideoCastManager;
 import com.google.android.libraries.cast.companionlibrary.cast.DataCastManager;
-
 import com.google.android.libraries.cast.companionlibrary.cast.callbacks.DataCastConsumer;
 import com.google.android.libraries.cast.companionlibrary.cast.callbacks.DataCastConsumerImpl;
-
-import com.google.android.libraries.cast.companionlibrary.cast.callbacks.VideoCastConsumer;
-import com.google.android.libraries.cast.companionlibrary.cast.callbacks.VideoCastConsumerImpl;
 import com.google.android.libraries.cast.companionlibrary.cast.exceptions.CastException;
 import com.google.android.libraries.cast.companionlibrary.cast.exceptions.NoConnectionException;
 import com.google.android.libraries.cast.companionlibrary.cast.exceptions.TransientNetworkDisconnectionException;
 import com.google.android.libraries.cast.companionlibrary.cast.exceptions.OnFailedListener;
-
 
 import java.util.HashMap;
 import java.util.Map;
@@ -55,7 +47,6 @@ public class GoogleCastModule extends ReactContextBaseJavaModule implements Life
 
     @VisibleForTesting
     public static final String REACT_CLASS = "GoogleCastModule";
-
     private static final String DEVICE_AVAILABLE = "GoogleCast:DeviceAvailable";
     private static final String DEVICE_CONNECTED = "GoogleCast:DeviceConnected";
     private static final String DEVICE_DISCONNECTED = "GoogleCast:DeviceDisconnected";
@@ -121,13 +112,11 @@ public class GoogleCastModule extends ReactContextBaseJavaModule implements Life
         }
     }
 
-
-
     @ReactMethod
-    public void isConnected(Promise promise) {
+    public void isConnected(Callback successCallback) {
         boolean isConnected = DataCastManager.getInstance().isConnected();
         Log.e(REACT_CLASS, "Am I connected ? " + isConnected);
-        promise.resolve(isConnected);
+        successCallback.invoke(isConnected);
     }
 
     @ReactMethod
@@ -199,6 +188,13 @@ public class GoogleCastModule extends ReactContextBaseJavaModule implements Life
                     DataCastManager.initialize(getCurrentActivity(), options);
                     mCastManager = DataCastManager.getInstance();
                     mCastConsumer = new DataCastConsumerImpl() {
+
+                        @Override
+                        public void onConnected() {
+                            super.onConnected();
+                            Log.e(REACT_CLASS, "Device Connected");
+                            emitMessageToRN(getReactApplicationContext(), DEVICE_CONNECTED, null);
+                        }
 
                         @Override
                         public void onDisconnected() {
