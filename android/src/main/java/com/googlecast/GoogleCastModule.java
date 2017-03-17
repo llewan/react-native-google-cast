@@ -50,7 +50,6 @@ public class GoogleCastModule extends ReactContextBaseJavaModule implements Life
     private static final String DEVICE_AVAILABLE = "GoogleCast:DeviceAvailable";
     private static final String DEVICE_CONNECTED = "GoogleCast:DeviceConnected";
     private static final String DEVICE_DISCONNECTED = "GoogleCast:DeviceDisconnected";
-    private static final String MEDIA_LOADED = "GoogleCast:MediaLoaded";
 
     public GoogleCastModule(ReactApplicationContext reactContext) {
         super(reactContext);
@@ -69,7 +68,6 @@ public class GoogleCastModule extends ReactContextBaseJavaModule implements Life
         constants.put("DEVICE_AVAILABLE", DEVICE_AVAILABLE);
         constants.put("DEVICE_CONNECTED", DEVICE_CONNECTED);
         constants.put("DEVICE_DISCONNECTED", DEVICE_DISCONNECTED);
-        constants.put("MEDIA_LOADED", MEDIA_LOADED);
         return constants;
     }
 
