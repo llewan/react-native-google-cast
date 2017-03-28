@@ -14,7 +14,7 @@ public class GoogleCastService {
     public static final String REACT_CLASS = "GoogleCastModule";
 
     public static CastConfiguration getCastConfig(){
-        CastConfiguration options = new CastConfiguration.Builder("D4DF8C2E")
+        CastConfiguration options = new CastConfiguration.Builder("460E4EDE")
                 .enableAutoReconnect()
                 .enableNotification()
                 .build();
